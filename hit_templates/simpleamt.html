@@ -19,6 +19,7 @@
       if (typeof(default_input) === 'undefined') default_input = null;
       try {
         return JSON.parse($('#input').html());
+
       } catch (e) {
         return default_input;
       }

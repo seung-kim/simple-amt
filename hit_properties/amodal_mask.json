@@ -1,0 +1,10 @@
+{
+  "Title": "Select the most likely image describing an occluded object",
+  "Description": "Select the most likely image describing an occluded object",
+  "Keywords": "image,select,selection,occlusion,mask",
+  "Reward": 0.05,
+  "LifetimeInSeconds": 604800,
+  "AssignmentDurationInSeconds": 900,
+  "FrameHeight": 20000,
+  "MaxAssignments": 1
+}

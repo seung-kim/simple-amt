@@ -1,0 +1,229 @@
+<html>
+  <head>
+    <title>Write sentences to describe images</title>
+    <!-- simpleamt depends on these libraries -->
+    <script src='//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js'></script>
+    <script src='//cdnjs.cloudflare.com/ajax/libs/json3/3.3.2/json3.min.js'></script>    
+    <!-- end of required libraries -->
+    <script src='//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js'></script>
+    <script src='//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js'></script>
+    <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      #text-area {
+        margin: 10px 0;
+        font-size: 24pt;
+      }
+      #button-div {
+        margin-bottom: 10px;
+      }
+      #counter {
+        margin: 0 10px;
+        font-size: 20pt;
+        font-weight: bold;
+      }
+      img {
+        height: 600px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class='container'>
+
+    </div>
+
+    <div class='container-fluid'>
+      <div class='row'>
+        <div class='col-md-4'>
+            <h3>Reference Image</h3>
+          <div id='rgb-image-container'>
+          </div>
+        </div>
+        <div class='col-md-4'>
+            <h3>Mask 1</h3>
+          <div id='mask1-image-container'>
+          </div>
+        </div>
+        <div class='col-md-4'>
+            <h3>Mask 2</h3>
+          <div id='mask2-image-container'>
+          </div>
+        </div>
+
+      </div>
+      <div class='row'>
+        <div class='col-xs-4 col-xs-offset-4'>
+            <h2>Instruction</h2>
+        <p>
+            The object is only partially visible since it's hidden behind another object. The masks on the right try to guess the best outline of the full object.
+            Please select which mask better guesses the outline of the full object.
+
+        </p>
+          <input type="radio" id="mask1" name="selection" value="1">
+          <label for="mask1">Mask 1 </label><br>
+          <input type="radio" id="mask2" name="selection" value="2">
+          <label for="mask2">Mask 2</label><br>
+          <input type="radio" id="other" name="selection" value="none">
+          <label for="other">No preference</label>
+
+        </div>
+        <div class='col-xs-4 col-xs-offset-4 text-center' id='button-div'>
+          <button id='prev-btn' class='btn btn-lg btn-primary' disabled>Back</button>
+          <span id='counter'>
+            <span class='counter-top'></span> / <span class='counter-bottom'></span>
+          </span>
+          <button id='next-btn' class='btn btn-lg btn-primary' disabled>Next</button>
+        </div>
+      </div>
+    </div>
+
+    {% include "hit_templates/simpleamt.html" %}
+
+    <script>
+      $(function() {
+
+        // Define some default input.
+        var DEFAULT_INPUT = [
+          ['https://live.staticflickr.com/3575/3365647249_5f442f56e8_b.jpg',
+          'https://live.staticflickr.com/4617/40150983442_5fc1afe90f_b.jpg',
+          'https://live.staticflickr.com/4617/40150983442_5fc1afe90f_c.jpg',
+              ],
+        ];
+        var DEFAULT_INPUT = [
+            ['inpaint/10.png','inpaint/12.png', 'inpaint/13.png'],
+            ['inpaint/10.png','inpaint/12.png', 'inpaint/13.png'],
+            ['inpaint/10.png','inpaint/12.png', 'inpaint/13.png']
+        ]
+        var input = null;
+
+        // Descriptions of images, parallel to input.
+        var descriptions = [];
+        var checked_values = [];
+
+        // Some variables to track state of the HIT.
+        var idx = 0;
+        var enabled = false;
+
+        function main() {
+          // If this is a HIT on AMT, then replace the default input with the real input.
+          input = simpleamt.getInput(DEFAULT_INPUT);
+            console.log(input)
+          // Enable the UI if the HIT is not in preview mode.
+          if (!simpleamt.isPreview()) {
+            enable_hit();
+          }
+
+          // Set up the descriptions.
+          _.each(input, function() { descriptions.push(''); checked_values.push('')});
+
+          // Preload all images
+          var imgs = [];
+          _.each(input, function(img_urls) {
+            let rgb_url = img_urls[0];
+            let mask1_url = img_urls[1];
+            let mask2_url = img_urls[2];
+            console.log(rgb_url)
+            console.log(mask1_url)
+
+            // RGB Image
+            var rgb_img = new Image();
+            rgb_img.onload = function() { console.log('loaded image from ' + rgb_url); };
+            rgb_img.src = rgb_url;
+
+            var mask1_img = new Image();
+            mask1_img.onload = function() { console.log('loaded image from ' + mask1_url); };
+            mask1_img.src = mask1_url;
+
+            var mask2_img = new Image();
+            mask2_img.onload = function() { console.log('loaded image from ' + mask2_url); };
+            mask2_img.src = mask2_url;
+
+          });
+
+          render();
+        }
+
+        // Use the current index to update the image and description
+        function render() {
+          // Set up the image
+          $('#rgb-image-container').empty();
+          $('#mask1-image-container').empty();
+          $('#mask2-image-container').empty();
+
+          $('<img>').attr('src', input[idx][0]).appendTo($('#rgb-image-container'));
+          $('<img>').attr('src', input[idx][1]).appendTo($('#mask1-image-container'));
+          $('<img>').attr('src', input[idx][2]).appendTo($('#mask2-image-container'));
+
+
+          // Set up the text area
+          $('#text-area').val(descriptions[idx]);
+
+          $("input[name='selection']").removeAttr('checked');
+          $(`input[name=selection][value="${checked_values[idx]}"]`).prop('checked', true);
+
+          // Refresh the counter
+          $('.counter-top').text(idx + 1);
+          $('.counter-bottom').text(input.length);
+
+          // If the UI is enabled, enable or disable the buttons depending on
+          // the index.
+          if (enabled) {
+            var prev_btn = $('#prev-btn');
+            var next_btn = $('#next-btn');
+            prev_btn.prop('disabled', true);
+            next_btn.prop('disabled', true);
+            if (idx > 0) {
+              prev_btn.prop('disabled', false);
+            }
+            if (idx < input.length - 1) next_btn.prop('disabled', false);
+          }
+        }
+
+        // Update the index, and save the text in the text area.
+        function set_idx(new_idx) {
+          if (new_idx < 0 || new_idx >= input.length) return;
+          descriptions[idx] = $('#text-area').val();
+          checked_values[idx] = $("input[name='selection']:checked").val();
+          idx = new_idx;
+          render();
+        }
+
+        // Enable the UI.
+        function enable_hit() {
+          enabled = true;
+
+          // Enable components
+          $('#next-btn').click(function() { set_idx(idx + 1) });
+          $('#prev-btn').click(function() { set_idx(idx - 1) });
+          $('#text-area').prop('disabled', false);
+          $('#submit-btn').prop('disabled', false);
+
+          // Set up submit handler.
+          simpleamt.setupSubmit();
+          $('#submit-btn').click(function() {
+            descriptions[idx] = $('#text-area').val();
+            checked_values[idx] = $("input[name='selection']:checked").val();
+
+            let all_checked=true
+            checked_values.forEach(v => {
+                if (! (v === '1' || v === '2' || v ==='none')) {
+                    all_checked = false;
+                    console.log(v)
+                }
+            })
+            if (!all_checked) {
+              alert('Please select one option for each page.');
+              return false;
+            }
+
+            var output = _.map(_.zip(input, checked_values), function(x) {
+              return {'rgb_url': x[0][0], 'mask1_url': x[0][1], 'mask2_url': x[0][2], 'selected': x[1]};
+            });
+            simpleamt.setOutput(output);
+          });
+        }
+
+        main();
+      });
+    </script>
+  </body>
+</html>
